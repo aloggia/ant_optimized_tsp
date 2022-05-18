@@ -14,6 +14,10 @@ use petgraph::{
 use petgraph::graph::{
     Frozen,
 };
+use petgraph::csr::EdgeIndex;
+use rand::Rng;
+use petgraph::adj::NodeIndex;
+use std::convert::TryInto;
 /*
 TODO: either create or import a graph library
  */
@@ -53,43 +57,46 @@ fn main() {
     //let mut edges = Vec::new();
     let mut ants = vec![];
 
-    let mut raw_graph = Graph::<i32, i32, Undirected>::new_undirected();
+    let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
     for _ in 0..num_nodes + 1 {
-        nodes.push(raw_graph.add_node(1));
+        nodes.push(graph.add_node(1));
     }
-    raw_graph.add_edge(nodes[0], nodes[1], 7);
-    raw_graph.add_edge(nodes[0], nodes[5], 3);
-    raw_graph.add_edge(nodes[0], nodes[3], 27);
-    raw_graph.add_edge(nodes[1], nodes[2], 27);
-    raw_graph.add_edge(nodes[3], nodes[5], 29);
-    raw_graph.add_edge(nodes[3], nodes[4], 6);
-    raw_graph.add_edge(nodes[3], nodes[2], 18);
-    raw_graph.add_edge(nodes[5], nodes[4], 20);
-    raw_graph.add_edge(nodes[5], nodes[7], 5);
-    raw_graph.add_edge(nodes[2], nodes[4], 26);
-    raw_graph.add_edge(nodes[2], nodes[6], 9);
-    raw_graph.add_edge(nodes[2], nodes[7], 1);
-    raw_graph.add_edge(nodes[4], nodes[6], 28);
-    raw_graph.add_edge(nodes[4], nodes[7], 19);
-    raw_graph.add_edge(nodes[6], nodes[7], 12);
-    raw_graph.add_edge(nodes[4], nodes[8], 15);
-    raw_graph.add_edge(nodes[5], nodes[8], 23);
-    raw_graph.add_edge(nodes[6], nodes[8], 3);
+    graph.add_edge(nodes[0], nodes[1], 7);
+    graph.add_edge(nodes[0], nodes[5], 3);
+    graph.add_edge(nodes[0], nodes[3], 27);
+    graph.add_edge(nodes[1], nodes[2], 27);
+    graph.add_edge(nodes[3], nodes[5], 29);
+    graph.add_edge(nodes[3], nodes[4], 6);
+    graph.add_edge(nodes[3], nodes[2], 18);
+    graph.add_edge(nodes[5], nodes[4], 20);
+    graph.add_edge(nodes[5], nodes[7], 5);
+    graph.add_edge(nodes[2], nodes[4], 26);
+    graph.add_edge(nodes[2], nodes[6], 9);
+    graph.add_edge(nodes[2], nodes[7], 1);
+    graph.add_edge(nodes[4], nodes[6], 28);
+    graph.add_edge(nodes[4], nodes[7], 19);
+    graph.add_edge(nodes[6], nodes[7], 12);
+    graph.add_edge(nodes[4], nodes[8], 15);
+    graph.add_edge(nodes[5], nodes[8], 23);
+    graph.add_edge(nodes[6], nodes[8], 3);
 
-    let graph = Arc::new(Mutex::new(Frozen::new(&mut raw_graph)));
+    let graph = Arc::new(Mutex::new(graph));
+    let edges: Arc<Mutex<HashMap<EdgeIndex, i32>>> = Arc::new(Mutex::new(HashMap::new()));
+    //let nodes: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(nodes));
 
     for _ in 0..num_ants {
         let graph = Arc::clone(&graph);
+        let edges = Arc::clone(&edges);
         let ant = thread::spawn(move || {
-
+            crawl_path(&graph, &edges);
         });
         ants.push(ant);
     }
     for ant in ants {
         ant.join().unwrap();
     }
-    // TODO: Need a hash map mapping edges -> deposited pheremone levels
+    // TODO: Need a hash map mapping edges -> deposited pheromone levels
 
     //let neighbors: Vec<_> = graph.lock().unwrap().neighbors(nodes[1]).collect();
 
@@ -110,13 +117,14 @@ fn main() {
      */
 }
 
-fn crawl_path() {
+fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
+              edges: &Arc<Mutex<HashMap<EdgeIndex, i32>>>) {
+
     /*
     TODO:
      Pick starting node
      create array of size n where n = num verticies -> keep track of visited nodes
      create array of size n where n = num verticies -> order of visited nodes
-     mark starting node as visited
      mark starting node as visited
      for node in neighbors:
         calculate probability for each node
@@ -129,6 +137,32 @@ fn crawl_path() {
      find combined weight of traversed edges
      pass vector of all traversed edges & combined weight into update pheromone function
      */
+    let num_nodes = graph.lock().unwrap().node_count();
+    let mut nodes: Vec<_> = Vec::new();
+    for i in graph.lock().unwrap().node_indices() {
+        nodes.push(i);
+    }
+    let start_node: usize = rand::thread_rng().gen_range(0..graph.lock().unwrap().node_count()).try_into().unwrap();
+    let mut curr_node = nodes[start_node];
+    let mut visited_nodes: Vec<bool> = vec![false; num_nodes];
+    let mut order_of_travel: Vec<NodeIndex> = Vec::with_capacity(num_nodes);
+
+    visited_nodes[start_node] = true;
+    order_of_travel.push(start_node as u32);
+    while order_of_travel.len() != num_nodes {
+        let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
+        let mut neighbor_weight: Vec<usize> = Vec::with_capacity(neighbors.len());
+
+        for neighbor in neighbors {
+            let edge = graph.lock().unwrap().find_edge(curr_node, neighbor).unwrap();
+            neighbor_weight.push(graph.lock().unwrap().edge_weight(edge).unwrap())
+        }
+
+        for edge in neighbor_weight {
+            edge = graph.lock().unwrap()
+            let weight = graph.lock().unwrap().find_edge(curr_node, )
+        }
+    }
 }
 
 fn update_pheromones() {
