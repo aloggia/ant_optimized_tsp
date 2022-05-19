@@ -67,7 +67,7 @@ fn main() {
 
     let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
 
-    // TODO: Weights & pheromone_str need to be floats
+
     edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[5], 3).index(), 2.0);
     edges.insert(graph.add_edge(nodes[0], nodes[3], 27).index(), 3.0);
