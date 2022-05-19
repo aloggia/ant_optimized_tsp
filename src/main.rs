@@ -51,13 +51,13 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 1;
-    let num_nodes: i32 = 8;
+    let num_ants = 5;
+    let num_nodes: i32 = 6;
     let mut nodes = Vec::new();
-    //let mut edges = Vec::new();
     let mut ants = vec![];
-    let dst_pow: f64 = 2.0;
-    let pheromone_pow: f64 = 2.0;
+
+    let dst_pow: f64 = 1.2;
+    let pheromone_pow: f64 = 1.2;
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
@@ -67,48 +67,42 @@ fn main() {
 
     let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
 
-    // edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
-    // edges.insert(graph.add_edge(nodes[0], nodes[2], 3).index(), 1.0);
-    // edges.insert(graph.add_edge(nodes[0], nodes[3], 20).index(), 1.0);
-    // edges.insert(graph.add_edge(nodes[1], nodes[2], 9).index(), 1.0);
-    // edges.insert(graph.add_edge(nodes[1], nodes[3], 4).index(), 1.0);
-    // edges.insert(graph.add_edge(nodes[2], nodes[3], 12).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[5], 3).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[3], 27).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[2], 27).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[2], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[3], 2).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[4], 6).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[5], 2).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[2], 8).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[3], 11).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[4], 6).index(), 1.0);
     edges.insert(graph.add_edge(nodes[1], nodes[5], 8).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[5], 29).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[4], 6).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[2], 18).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[5], nodes[4], 20).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[5], nodes[7], 5).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[4], 26).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[6], 9).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[7], 1).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[6], 28).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[7], 19).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[6], nodes[7], 12).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[3], 12).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[4], 5).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[5], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[4], 9).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[5], 4).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[5], 3).index(), 1.0);
+
 
     let graph = Arc::new(Mutex::new(graph));
     let edges= Arc::new(Mutex::new(edges));
 
-    //let nodes: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(nodes));
+    let ant_paths: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::with_capacity((num_nodes * num_ants) as usize)));
 
     for _ in 0..num_ants {
         let graph = Arc::clone(&graph);
         let edges = Arc::clone(&edges);
+        let ant_paths = Arc::clone(&ant_paths);
         let ant = thread::spawn(move || {
-            crawl_path(&graph, &edges, dst_pow, pheromone_pow);
+            let mut ant_path = crawl_path(&graph, &edges, dst_pow, pheromone_pow);
+            ant_paths.lock().unwrap().append(&mut ant_path);
         });
         ants.push(ant);
     }
     for ant in ants {
         ant.join().unwrap();
     }
-    // TODO: Need a hash map mapping edges -> deposited pheromone levels
-
-    //let neighbors: Vec<_> = graph.lock().unwrap().neighbors(nodes[1]).collect();
+    println!("{:?}", ant_paths.lock().unwrap())
 
 
 
@@ -122,7 +116,7 @@ fn main() {
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
               edges: &Arc<Mutex<HashMap<usize, f64>>>,
               dst_pow: f64,
-              pheromone_pow: f64) {
+              pheromone_pow: f64) -> Vec<usize> {
     /*
     TODO:
      Pick starting node
@@ -166,7 +160,7 @@ TODO: When choosing the next node do:
 
     while order_of_travel.len() != num_nodes {
         let mut neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
-        println!("{:?}", &neighbors);
+        //println!("{:?}", &neighbors);
         let mut neighbor_desirability: Vec<f64> = Vec::with_capacity(neighbors.len());
 
         for neighbor in neighbors.iter() {
@@ -176,7 +170,7 @@ TODO: When choosing the next node do:
             neighbor_desirability.push((1.0/weight).powf(dst_pow) *
                 (pheromone_str).powf(pheromone_pow))
         }
-        println!("{:?}", neighbor_desirability);
+        //println!("{:?}", neighbor_desirability);
 
         let mut node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
         let mut chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
@@ -204,12 +198,11 @@ TODO: When choosing the next node do:
          look in visited nodes array, if chosen node is visited,
          remove that node from neighbor desirability and chose again
          */
-        println!("{:?}", curr_node);
-        println!("{:?}", visited_nodes);
-        println!("{:?}", order_of_travel);
-        println!(" ");
-
+        //println!("{:?}", curr_node);
+        //println!("{:?}", visited_nodes);
     }
+    //println!("{:?}", order_of_travel);
+    order_of_travel
 
 }
 #[allow(dead_code)]
