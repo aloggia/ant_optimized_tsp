@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::{
     sync::{
         Mutex,
@@ -11,12 +12,11 @@ use petgraph::{
     Graph,
     Undirected
 };
-use petgraph::graph::{
-    Frozen,
+use rand::{Rng, thread_rng};
+use rand::distributions::{
+    WeightedIndex,
+    Distribution,
 };
-use petgraph::csr::EdgeIndex;
-use rand::Rng;
-use petgraph::adj::NodeIndex;
 use std::convert::TryInto;
 /*
 TODO: either create or import a graph library
@@ -61,31 +61,34 @@ fn main() {
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
-    for _ in 0..num_nodes + 1 {
+    for _ in 0..num_nodes {
         nodes.push(graph.add_node(1));
     }
 
     let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
 
-
+    // edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
+    // edges.insert(graph.add_edge(nodes[0], nodes[2], 3).index(), 1.0);
+    // edges.insert(graph.add_edge(nodes[0], nodes[3], 20).index(), 1.0);
+    // edges.insert(graph.add_edge(nodes[1], nodes[2], 9).index(), 1.0);
+    // edges.insert(graph.add_edge(nodes[1], nodes[3], 4).index(), 1.0);
+    // edges.insert(graph.add_edge(nodes[2], nodes[3], 12).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[5], 3).index(), 2.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[3], 27).index(), 3.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[2], 27).index(), 4.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[5], 29).index(), 5.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[4], 6).index(), 6.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[2], 18).index(), 7.0);
-    edges.insert(graph.add_edge(nodes[5], nodes[4], 20).index(), 8.0);
-    edges.insert(graph.add_edge(nodes[5], nodes[7], 5).index(), 9.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[4], 26).index(), 10.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[6], 9).index(), 11.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[7], 1).index(), 12.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[6], 28).index(), 13.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[7], 19).index(), 14.0);
-    edges.insert(graph.add_edge(nodes[6], nodes[7], 12).index(), 15.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[8], 15).index(), 16.0);
-    edges.insert(graph.add_edge(nodes[5], nodes[8], 23).index(), 17.0);
-    edges.insert(graph.add_edge(nodes[6], nodes[8], 3).index(), 18.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[5], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[3], 27).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[2], 27).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[5], 8).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[5], 29).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[4], 6).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[2], 18).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[5], nodes[4], 20).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[5], nodes[7], 5).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[4], 26).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[6], 9).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[7], 1).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[6], 28).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[7], 19).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[7], 12).index(), 1.0);
 
     let graph = Arc::new(Mutex::new(graph));
     let edges= Arc::new(Mutex::new(edges));
@@ -151,48 +154,65 @@ TODO: When choosing the next node do:
         nodes.push(i);
     }
     let start_node: usize = rand::thread_rng().gen_range(0..graph.lock().unwrap().node_count()).try_into().unwrap();
+    //let start_node = 0;
+    println!("{:?}", start_node);
     let mut curr_node = nodes[start_node];
     let mut visited_nodes: Vec<bool> = vec![false; num_nodes];
-    let mut order_of_travel: Vec<NodeIndex> = Vec::with_capacity(num_nodes);
+    let mut order_of_travel: Vec<_> = Vec::with_capacity(num_nodes);
 
     visited_nodes[start_node] = true;
-    order_of_travel.push(start_node as u32);
-    let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
-    let mut neighbor_desirability: Vec<f64> = Vec::with_capacity(neighbors.len());
+    order_of_travel.push(start_node);
 
-    for neighbor in neighbors.iter() {
-        let edge = graph.lock().unwrap().find_edge(curr_node, *neighbor).unwrap();
-        let weight = *graph.lock().unwrap().edge_weight(edge).unwrap() as f64;
-        let pheromone_str = *edges.lock().unwrap().get(&edge.index()).unwrap();
-        neighbor_desirability.push((1.0/weight).powf(dst_pow) *
-            (pheromone_str).powf(pheromone_pow))
+
+    while order_of_travel.len() != num_nodes {
+        let mut neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
+        println!("{:?}", &neighbors);
+        let mut neighbor_desirability: Vec<f64> = Vec::with_capacity(neighbors.len());
+
+        for neighbor in neighbors.iter() {
+            let edge = graph.lock().unwrap().find_edge(curr_node, *neighbor).unwrap();
+            let weight = *graph.lock().unwrap().edge_weight(edge).unwrap() as f64;
+            let pheromone_str = *edges.lock().unwrap().get(&edge.index()).unwrap();
+            neighbor_desirability.push((1.0/weight).powf(dst_pow) *
+                (pheromone_str).powf(pheromone_pow))
+        }
+        println!("{:?}", neighbor_desirability);
+
+        let mut node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
+        let mut chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
+        let chosen_node_idx_neighbors = neighbors
+            .iter()
+            .position(|&x| x == chosen_node)
+            .unwrap();
+
+        if visited_nodes[chosen_node.index()] == true {
+            neighbors.remove(chosen_node_idx_neighbors);
+            neighbor_desirability.remove(chosen_node_idx_neighbors);
+        }
+        node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
+        chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
+        while visited_nodes[chosen_node.index()] == true {
+            chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
+        }
+        let chosen_node_as_usize= chosen_node.index();
+
+        order_of_travel.push(chosen_node_as_usize);
+        visited_nodes[chosen_node_as_usize] = true;
+        curr_node = chosen_node;
+
+        /*
+         look in visited nodes array, if chosen node is visited,
+         remove that node from neighbor desirability and chose again
+         */
+        println!("{:?}", curr_node);
+        println!("{:?}", visited_nodes);
+        println!("{:?}", order_of_travel);
+        println!(" ");
+
     }
-    println!("{:?}", curr_node);
-    println!("{:?}", neighbors);
-    println!("{}", start_node);
-    println!("{:?}", neighbor_desirability);
 
-    // while order_of_travel.len() != num_nodes {
-    //     let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
-    //     let mut neighbor_desirability: Vec<i32> = Vec::with_capacity(neighbors.len());
-    //
-    //     for neighbor in neighbors.iter() {
-    //         let edge = graph.lock().unwrap().find_edge(curr_node, *neighbor).unwrap();
-    //         let weight = *graph.lock().unwrap().edge_weight(edge).unwrap();
-    //         let pheromone_str = *edges.lock().unwrap().get(&edge.index()).unwrap();
-    //         neighbor_desirability.push((1/weight).pow(dst_pow as u32) *
-    //             (pheromone_str).pow(pheromone_pow as u32))
-    //     }
-    //     // TODO: Make neighbor choice here
-    //
-    //     /*
-    //      look in visited nodes array, if chosen node is visited,
-    //      remove that node from neighbor desirability and chose again
-    //      */
-    //
-    // }
 }
-
+#[allow(dead_code)]
 fn update_pheromones() {
     /*
     TODO:
@@ -201,7 +221,7 @@ fn update_pheromones() {
         update pheromone levels depending on score of traveresed path
      */
 }
-
+#[allow(dead_code)]
 fn evaporate_pheromones() {
     /*
     TODO:
