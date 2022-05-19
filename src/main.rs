@@ -51,45 +51,52 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 5;
+    let num_ants = 1;
     let num_nodes: i32 = 8;
     let mut nodes = Vec::new();
     //let mut edges = Vec::new();
     let mut ants = vec![];
+    let dst_pow: f64 = 2.0;
+    let pheromone_pow: f64 = 2.0;
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
     for _ in 0..num_nodes + 1 {
         nodes.push(graph.add_node(1));
     }
-    graph.add_edge(nodes[0], nodes[1], 7);
-    graph.add_edge(nodes[0], nodes[5], 3);
-    graph.add_edge(nodes[0], nodes[3], 27);
-    graph.add_edge(nodes[1], nodes[2], 27);
-    graph.add_edge(nodes[3], nodes[5], 29);
-    graph.add_edge(nodes[3], nodes[4], 6);
-    graph.add_edge(nodes[3], nodes[2], 18);
-    graph.add_edge(nodes[5], nodes[4], 20);
-    graph.add_edge(nodes[5], nodes[7], 5);
-    graph.add_edge(nodes[2], nodes[4], 26);
-    graph.add_edge(nodes[2], nodes[6], 9);
-    graph.add_edge(nodes[2], nodes[7], 1);
-    graph.add_edge(nodes[4], nodes[6], 28);
-    graph.add_edge(nodes[4], nodes[7], 19);
-    graph.add_edge(nodes[6], nodes[7], 12);
-    graph.add_edge(nodes[4], nodes[8], 15);
-    graph.add_edge(nodes[5], nodes[8], 23);
-    graph.add_edge(nodes[6], nodes[8], 3);
+
+    let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
+
+    // TODO: Weights & pheromone_str need to be floats
+    edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[5], 3).index(), 2.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[3], 27).index(), 3.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[2], 27).index(), 4.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[5], 29).index(), 5.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[4], 6).index(), 6.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[2], 18).index(), 7.0);
+    edges.insert(graph.add_edge(nodes[5], nodes[4], 20).index(), 8.0);
+    edges.insert(graph.add_edge(nodes[5], nodes[7], 5).index(), 9.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[4], 26).index(), 10.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[6], 9).index(), 11.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[7], 1).index(), 12.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[6], 28).index(), 13.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[7], 19).index(), 14.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[7], 12).index(), 15.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[8], 15).index(), 16.0);
+    edges.insert(graph.add_edge(nodes[5], nodes[8], 23).index(), 17.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[8], 3).index(), 18.0);
 
     let graph = Arc::new(Mutex::new(graph));
-    let edges: Arc<Mutex<HashMap<EdgeIndex, i32>>> = Arc::new(Mutex::new(HashMap::new()));
+    let edges= Arc::new(Mutex::new(edges));
+
     //let nodes: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(nodes));
 
     for _ in 0..num_ants {
         let graph = Arc::clone(&graph);
         let edges = Arc::clone(&edges);
         let ant = thread::spawn(move || {
-            crawl_path(&graph, &edges);
+            crawl_path(&graph, &edges, dst_pow, pheromone_pow);
         });
         ants.push(ant);
     }
@@ -101,14 +108,6 @@ fn main() {
     //let neighbors: Vec<_> = graph.lock().unwrap().neighbors(nodes[1]).collect();
 
 
-    /*
-    TODO: When choosing the next node do:
-     let neighbors: Vec<_> = graph.neighbors(curr_node).collect();
-     for i in neighbors {
-        let weight = graph.edge_weight(graph.find_edge(nodes[1], nodes[2]).unwrap()).unwrap();
-        let desirability = ((1/weight).pow(dst_pow)) * (pheromone_str.pow(pheromone_pow));
-        Then we can probabilistically choose a dest depending on edge desirability
-     */
 
     // Thread spawning loop
     /*for _ in 0..num_ants {
@@ -118,8 +117,9 @@ fn main() {
 }
 
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
-              edges: &Arc<Mutex<HashMap<EdgeIndex, i32>>>) {
-
+              edges: &Arc<Mutex<HashMap<usize, f64>>>,
+              dst_pow: f64,
+              pheromone_pow: f64) {
     /*
     TODO:
      Pick starting node
@@ -137,6 +137,14 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
      find combined weight of traversed edges
      pass vector of all traversed edges & combined weight into update pheromone function
      */
+    /*
+TODO: When choosing the next node do:
+ let neighbors: Vec<_> = graph.neighbors(curr_node).collect();
+ for i in neighbors {
+    let weight = graph.edge_weight(graph.find_edge(nodes[1], nodes[2]).unwrap()).unwrap();
+    let desirability = ((1/weight).pow(dst_pow)) * (pheromone_str.pow(pheromone_pow));
+    Then we can probabilistically choose a dest depending on edge desirability
+ */
     let num_nodes = graph.lock().unwrap().node_count();
     let mut nodes: Vec<_> = Vec::new();
     for i in graph.lock().unwrap().node_indices() {
@@ -149,20 +157,40 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
 
     visited_nodes[start_node] = true;
     order_of_travel.push(start_node as u32);
-    while order_of_travel.len() != num_nodes {
-        let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
-        let mut neighbor_weight: Vec<usize> = Vec::with_capacity(neighbors.len());
+    let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
+    let mut neighbor_desirability: Vec<f64> = Vec::with_capacity(neighbors.len());
 
-        for neighbor in neighbors {
-            let edge = graph.lock().unwrap().find_edge(curr_node, neighbor).unwrap();
-            neighbor_weight.push(graph.lock().unwrap().edge_weight(edge).unwrap())
-        }
-
-        for edge in neighbor_weight {
-            edge = graph.lock().unwrap()
-            let weight = graph.lock().unwrap().find_edge(curr_node, )
-        }
+    for neighbor in neighbors.iter() {
+        let edge = graph.lock().unwrap().find_edge(curr_node, *neighbor).unwrap();
+        let weight = *graph.lock().unwrap().edge_weight(edge).unwrap() as f64;
+        let pheromone_str = *edges.lock().unwrap().get(&edge.index()).unwrap();
+        neighbor_desirability.push((1.0/weight).powf(dst_pow) *
+            (pheromone_str).powf(pheromone_pow))
     }
+    println!("{:?}", curr_node);
+    println!("{:?}", neighbors);
+    println!("{}", start_node);
+    println!("{:?}", neighbor_desirability);
+
+    // while order_of_travel.len() != num_nodes {
+    //     let neighbors: Vec<_> = graph.lock().unwrap().neighbors(curr_node).collect();
+    //     let mut neighbor_desirability: Vec<i32> = Vec::with_capacity(neighbors.len());
+    //
+    //     for neighbor in neighbors.iter() {
+    //         let edge = graph.lock().unwrap().find_edge(curr_node, *neighbor).unwrap();
+    //         let weight = *graph.lock().unwrap().edge_weight(edge).unwrap();
+    //         let pheromone_str = *edges.lock().unwrap().get(&edge.index()).unwrap();
+    //         neighbor_desirability.push((1/weight).pow(dst_pow as u32) *
+    //             (pheromone_str).pow(pheromone_pow as u32))
+    //     }
+    //     // TODO: Make neighbor choice here
+    //
+    //     /*
+    //      look in visited nodes array, if chosen node is visited,
+    //      remove that node from neighbor desirability and chose again
+    //      */
+    //
+    // }
 }
 
 fn update_pheromones() {
