@@ -49,7 +49,7 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 1;
+    let num_ants = 2;
     let num_nodes: i32 = 6;
     let mut nodes = Vec::new();
     let mut ants = vec![];
@@ -229,19 +229,22 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
     for i in graph.lock().unwrap().node_indices() {
         nodes.push(i);
     }
-
+    println!("{:?}", &nodes.len());
     let mut ant_tour_cost = Vec::with_capacity(num_ants as usize);
     let mut all_paths_idx = 0;
     let mut total_path_cost = 0;
     let mut each_ant_idx = 0;
 
     while each_ant_idx < num_ants {
-        for i in 0..num_nodes {
-            total_path_cost = total_path_cost + graph.lock().unwrap().edge_weight(graph.lock().unwrap().find_edge(nodes[(each_ant_idx * num_ants + i) as usize], nodes[(each_ant_idx * num_ants + (i + 1)) as usize]).unwrap()).unwrap();
+        for i in 0..(num_nodes - 1) {
+            let source_node = &nodes[(each_ant_idx * nodes.len() as i32 + i) as usize];
+            let dest_node = &nodes[(each_ant_idx * nodes.len() as i32 + (i + 1)) as usize];
+            let curr_edge = graph.lock().unwrap().find_edge(*source_node, *dest_node).unwrap();
+            total_path_cost = total_path_cost + graph.lock().unwrap().edge_weight(curr_edge).unwrap();
             //println!("{:?}", each_ant_idx * num_ants + i);
-            println!("{:?}", &total_path_cost);
         }
         ant_tour_cost.push(total_path_cost);
+        println!("{:?}", &ant_tour_cost);
         total_path_cost = 0;
         each_ant_idx = each_ant_idx + 1;
     }
