@@ -18,6 +18,7 @@ use rand::distributions::{
     Distribution,
 };
 use std::convert::TryInto;
+use petgraph::adj::NodeIndex;
 
 /*
 TODO: Code algorithm
@@ -48,14 +49,16 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 5;
+    let num_ants = 1;
     let num_nodes: i32 = 6;
     let mut nodes = Vec::new();
     let mut ants = vec![];
     // dst_pow should be less than one
-    let dst_pow: f64 = 0.8;
+    let dst_pow: f64 = 0.5;
     // pheromone_pow should be greater than 0
-    let pheromone_pow: f64 = 1.2;
+    let pheromone_pow: f64 = 1.3;
+    let evaporation_rate: f64 = 0.3;
+    let pheromone_str: f64 = 1.0;
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
@@ -84,6 +87,7 @@ fn main() {
 
     let graph = Arc::new(Mutex::new(graph));
     let edges= Arc::new(Mutex::new(edges));
+    let nodes = Arc::new(Mutex::new(nodes));
 
     let ant_paths: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::with_capacity((num_nodes * num_ants) as usize)));
 
@@ -100,7 +104,14 @@ fn main() {
     for ant in ants {
         ant.join().unwrap();
     }
-    println!("{:?}", ant_paths.lock().unwrap())
+    println!("{:?}", ant_paths.lock().unwrap());
+    update_pheromones(&graph,
+                      &edges,
+                      &ant_paths,
+                      evaporation_rate,
+                      pheromone_str,
+                      (num_nodes - 1) as usize,
+                      num_nodes, num_ants)
 }
 
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
@@ -138,7 +149,7 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
     }
     let start_node: usize = rand::thread_rng().gen_range(0..graph.lock().unwrap().node_count()).try_into().unwrap();
     //let start_node = 0;
-    println!("{:?}", start_node);
+    //println!("{:?}", start_node);
     let mut curr_node = nodes[start_node];
     let mut visited_nodes: Vec<bool> = vec![false; num_nodes];
     let mut order_of_travel: Vec<_> = Vec::with_capacity(num_nodes);
@@ -159,11 +170,11 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
             neighbor_desirability.push((1.0/weight).powf(dst_pow) *
                 (pheromone_str).powf(pheromone_pow))
         }
-        //println!("{:?}", neighbor_desirability);
         let total_probability: f64 = neighbor_desirability.iter().sum();
         for mut neighbor in &neighbor_desirability {
             neighbor = &(neighbor / total_probability);
         }
+        //println!("{:?}", neighbor_desirability);
 
         let mut node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
         let mut chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
@@ -181,6 +192,7 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
         for mut neighbor in &neighbor_desirability {
             neighbor = &(neighbor / total_probability);
         }
+        //println!("{:?}", neighbor_desirability);
 
         node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
         chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
@@ -197,19 +209,42 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
 
 }
 #[allow(dead_code)]
-fn update_pheromones() {
+fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
+                     edges: &Arc<Mutex<HashMap<usize, f64>>>,
+                     all_paths: &Arc<Mutex<Vec<usize>>>,
+                     evaporation_rate: f64,
+                     pheromone_str: f64,
+                     edges_traversed: usize,
+                     num_nodes: i32,
+                     num_ants: i32) {
+    // Indexing equation: ant * num_ants + sub_index
     /*
     TODO:
-     for edge in edges:
-        pull edge from edge_&_pheromone hash map
-        update pheromone levels depending on score of traveresed path
+     pheromone put down by each ant: Q / Lk where Q is a constant and Lk is the the total cost of the
+     kth ants tour
+     for edge in traversal_array
+        pheromone_lvl = ((1 - phermonone_const) * curr_pheromone_lvl) + sum of total pheromone put down on edge
      */
-}
-#[allow(dead_code)]
-fn evaporate_pheromones() {
-    /*
-    TODO:
-     For each edge in hash map
-        decrease pheromone level by the evaporation rate
-     */
+    let mut nodes: Vec<_> = Vec::new();
+    for i in graph.lock().unwrap().node_indices() {
+        nodes.push(i);
+    }
+
+    let mut ant_tour_cost = Vec::with_capacity(num_ants as usize);
+    let mut all_paths_idx = 0;
+    let mut total_path_cost = 0;
+    let mut each_ant_idx = 0;
+
+    while each_ant_idx < num_ants {
+        for i in 0..num_nodes {
+            total_path_cost = total_path_cost + graph.lock().unwrap().edge_weight(graph.lock().unwrap().find_edge(nodes[(each_ant_idx * num_ants + i) as usize], nodes[(each_ant_idx * num_ants + (i + 1)) as usize]).unwrap()).unwrap();
+            //println!("{:?}", each_ant_idx * num_ants + i);
+            println!("{:?}", &total_path_cost);
+        }
+        ant_tour_cost.push(total_path_cost);
+        total_path_cost = 0;
+        each_ant_idx = each_ant_idx + 1;
+    }
+    //println!("{:?}", ant_tour_cost);
+
 }
