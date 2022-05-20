@@ -229,17 +229,20 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
     for i in graph.lock().unwrap().node_indices() {
         nodes.push(i);
     }
-    println!("{:?}", &nodes.len());
+
     let mut ant_tour_cost = Vec::with_capacity(num_ants as usize);
     let mut all_paths_idx = 0;
     let mut total_path_cost = 0;
     let mut each_ant_idx = 0;
 
     while each_ant_idx < num_ants {
+        //println!("At top of for loop");
         for i in 0..(num_nodes - 1) {
-            let source_node = &nodes[(each_ant_idx * nodes.len() as i32 + i) as usize];
-            let dest_node = &nodes[(each_ant_idx * nodes.len() as i32 + (i + 1)) as usize];
-            let curr_edge = graph.lock().unwrap().find_edge(*source_node, *dest_node).unwrap();
+            let source_node_usize = *all_paths.lock().unwrap().get((each_ant_idx * nodes.len() as i32 + i) as usize).unwrap();
+            let source_node = graph.lock().unwrap().node_indices().find(|x| x.index() == source_node_usize).unwrap();
+            let dest_node_usize = *all_paths.lock().unwrap().get((each_ant_idx * nodes.len() as i32 + (i + 1)) as usize).unwrap();
+            let dest_node = graph.lock().unwrap().node_indices().find(|x| x.index() == dest_node_usize).unwrap();
+            let curr_edge = graph.lock().unwrap().find_edge(source_node, dest_node).unwrap();
             total_path_cost = total_path_cost + graph.lock().unwrap().edge_weight(curr_edge).unwrap();
             //println!("{:?}", each_ant_idx * num_ants + i);
         }
