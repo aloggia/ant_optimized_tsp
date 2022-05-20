@@ -18,9 +18,6 @@ use rand::distributions::{
     Distribution,
 };
 use std::convert::TryInto;
-/*
-TODO: either create or import a graph library
- */
 
 /*
 TODO: Code algorithm
@@ -55,8 +52,9 @@ fn main() {
     let num_nodes: i32 = 6;
     let mut nodes = Vec::new();
     let mut ants = vec![];
-
-    let dst_pow: f64 = 1.2;
+    // dst_pow should be less than one
+    let dst_pow: f64 = 0.8;
+    // pheromone_pow should be greater than 0
     let pheromone_pow: f64 = 1.2;
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
@@ -103,14 +101,6 @@ fn main() {
         ant.join().unwrap();
     }
     println!("{:?}", ant_paths.lock().unwrap())
-
-
-
-    // Thread spawning loop
-    /*for _ in 0..num_ants {
-        // TODO: Create threads here
-    }
-     */
 }
 
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
@@ -118,15 +108,14 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
               dst_pow: f64,
               pheromone_pow: f64) -> Vec<usize> {
     /*
-    TODO:
      Pick starting node
-     create array of size n where n = num verticies -> keep track of visited nodes
-     create array of size n where n = num verticies -> order of visited nodes
+     create array of size n where n = num vertices -> keep track of visited nodes
+     create array of size n where n = num vertices -> order of visited nodes
      mark starting node as visited
      for node in neighbors:
         calculate probability for each node
         if node is visited:
-            remove it from conideration
+            remove it from consideration
      chose node
      mark the chosen node as visited
      add the chosen node to visited_node array
@@ -135,7 +124,7 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
      pass vector of all traversed edges & combined weight into update pheromone function
      */
     /*
-TODO: When choosing the next node do:
+ When choosing the next node do:
  let neighbors: Vec<_> = graph.neighbors(curr_node).collect();
  for i in neighbors {
     let weight = graph.edge_weight(graph.find_edge(nodes[1], nodes[2]).unwrap()).unwrap();
@@ -171,6 +160,10 @@ TODO: When choosing the next node do:
                 (pheromone_str).powf(pheromone_pow))
         }
         //println!("{:?}", neighbor_desirability);
+        let total_probability: f64 = neighbor_desirability.iter().sum();
+        for mut neighbor in &neighbor_desirability {
+            neighbor = &(neighbor / total_probability);
+        }
 
         let mut node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
         let mut chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
@@ -183,6 +176,12 @@ TODO: When choosing the next node do:
             neighbors.remove(chosen_node_idx_neighbors);
             neighbor_desirability.remove(chosen_node_idx_neighbors);
         }
+
+        let total_probability: f64 = neighbor_desirability.iter().sum();
+        for mut neighbor in &neighbor_desirability {
+            neighbor = &(neighbor / total_probability);
+        }
+
         node_dist = WeightedIndex::new(&neighbor_desirability).unwrap();
         chosen_node = neighbors[node_dist.sample(&mut thread_rng())];
         while visited_nodes[chosen_node.index()] == true {
@@ -193,15 +192,7 @@ TODO: When choosing the next node do:
         order_of_travel.push(chosen_node_as_usize);
         visited_nodes[chosen_node_as_usize] = true;
         curr_node = chosen_node;
-
-        /*
-         look in visited nodes array, if chosen node is visited,
-         remove that node from neighbor desirability and chose again
-         */
-        //println!("{:?}", curr_node);
-        //println!("{:?}", visited_nodes);
     }
-    //println!("{:?}", order_of_travel);
     order_of_travel
 
 }
