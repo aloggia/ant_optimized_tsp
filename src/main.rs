@@ -49,14 +49,14 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 3;
+    let num_ants = 2;
     let num_nodes: i32 = 6;
     let mut nodes = Vec::new();
     let mut ants = vec![];
     // dst_pow < one
-    let dst_pow: f64 = 0.1;
+    let dst_pow: f64 = 0.5;
     // pheromone_pow > 0
-    let pheromone_pow: f64 = 1.5;
+    let pheromone_pow: f64 = 2.0;
     let evaporation_rate: f64 = 0.3;
     let pheromone_str: f64 = 1.2;
 
@@ -68,25 +68,27 @@ fn main() {
 
     let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
 
-    edges.insert(graph.add_edge(nodes[0], nodes[1], 7).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[2], 3).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[3], 2).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[4], 6).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[0], nodes[5], 2).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[2], 8).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[3], 11).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[4], 6).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[1], nodes[5], 8).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[3], 12).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[4], 5).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[2], nodes[5], 3).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[4], 9).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[3], nodes[5], 4).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[4], nodes[5], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[1], 17).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[2], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[3], 24).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[4], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[0], nodes[5], 13).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[2], 30).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[3], 4).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[4], 14).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[1], nodes[5], 15).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[3], 2).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[4], 21).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[2], nodes[5], 11).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[4], 18).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[3], nodes[5], 5).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[4], nodes[5], 9).index(), 1.0);
 
 
     let graph = Arc::new(Mutex::new(graph));
     let edges = Arc::new(Mutex::new(edges));
+
+
 
     let ant_paths: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::with_capacity((num_nodes * num_ants) as usize)));
 
@@ -110,7 +112,7 @@ fn main() {
                       evaporation_rate,
                       pheromone_str,
                       (num_nodes - 1) as usize,
-                      num_nodes, num_ants)
+                      num_nodes, num_ants);
 }
 
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
@@ -145,7 +147,7 @@ fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
     Estimated complexity: O((num_nodes - 1) * ((num_nodes - 1) * 3))
      */
     let num_nodes = graph.lock().unwrap().node_count();
-    let mut nodes: Vec<_> = graph.lock().unwrap().node_indices().collect();
+    let nodes: Vec<_> = graph.lock().unwrap().node_indices().collect();
 
     let start_node: usize = rand::thread_rng().gen_range(0..graph.lock().unwrap().node_count()).try_into().unwrap();
     //let start_node = 0;
@@ -225,20 +227,24 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
      for edge in traversal_array
         pheromone_lvl = ((1 - phermonone_const) * curr_pheromone_lvl) + sum of total pheromone put down on edge
      */
-    let mut nodes: Vec<_> = graph.lock().unwrap().node_indices().collect();
-
+    let nodes: Vec<_> = graph.lock().unwrap().node_indices().collect();
     let mut ant_tour_cost = Vec::with_capacity(num_ants as usize);
     let mut all_paths_idx = 0;
     let mut total_path_cost = 0;
     let mut each_ant_idx = 0;
 
-    // TODO: Loop through every element in in edges, and update the pheromone level by (1-evaporation_rate)
-    let mut edges_iter = graph.lock().unwrap().edge_indices();
-    let pher_level = *edges.lock().unwrap().get(&edges_iter.next().unwrap().index()).unwrap();
-    for _ in 0..edges.lock().unwrap().len() {
-        edges.lock().unwrap().get(&edges_iter.next().unwrap().index()) = (1.0 - evaporation_rate) * edges.lock().unwrap().get(&edges_iter.next().unwrap().index());
+    // Loop through every element in in edges, and update the pheromone level by (1-evaporation_rate)
+    for (_, value) in edges.lock().unwrap().iter_mut() {
+        *value = (1.0 - evaporation_rate) * *value;
     }
 
+    /*
+     TODO: idea -> create Vec<Vec<_> to hold each edge in each path. Then we can loop through
+      all the edges, look at each one as an index, and update its pheromones in the hash table
+      Need to update (6 * num_ants) - num_ants edges
+
+      TODO: Loop through each set: num_nodes - 1 times
+     */
     while each_ant_idx < num_ants {
         //println!("At top of for loop");
         for i in 0..(num_nodes - 1) {
@@ -251,9 +257,23 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
             //println!("{:?}", each_ant_idx * num_ants + i);
         }
         ant_tour_cost.push(total_path_cost);
-        println!("{:?}", &ant_tour_cost.get(each_ant_idx as usize).unwrap());
+        //println!("{:?}", &ant_tour_cost.get(each_ant_idx as usize).unwrap());
         total_path_cost = 0;
         each_ant_idx = each_ant_idx + 1;
     }
-    //println!("{:?}", ant_tour_cost);
+    println!("{:?}", ant_tour_cost);
+
+    each_ant_idx = 0;
+    while each_ant_idx < num_ants {
+        for i in 0..(num_nodes - 1) {
+            let source_node_usize = *all_paths.lock().unwrap().get((each_ant_idx * nodes.len() as i32 + i) as usize).unwrap();
+            let source_node = graph.lock().unwrap().node_indices().find(|x| x.index() == source_node_usize).unwrap();
+            let dest_node_usize = *all_paths.lock().unwrap().get((each_ant_idx * nodes.len() as i32 + (i + 1)) as usize).unwrap();
+            let dest_node = graph.lock().unwrap().node_indices().find(|x| x.index() == dest_node_usize).unwrap();
+            let curr_edge = graph.lock().unwrap().find_edge(source_node, dest_node).unwrap().index();
+            let curr_edge_weight = *edges.lock().unwrap().get(&curr_edge).unwrap();
+            let new_edge_pheromone_lvl = curr_edge_weight + (pheromone_str / ant_tour_cost[each_ant_idx as usize] as f64);
+            edges.lock().unwrap().insert(curr_edge, new_edge_pheromone_lvl);
+        }
+    }
 }
