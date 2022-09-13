@@ -19,6 +19,7 @@ use rand::distributions::{
     Distribution,
     WeightedIndex,
 };
+use petgraph::adj::NodeIndex;
 
 /*
 TODO: Code algorithm
@@ -49,16 +50,16 @@ TODO: parameters:
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
-    let num_ants = 2;
-    let num_nodes: i32 = 6;
+    let num_ants = 6;
+    let num_nodes: i32 = 10;
     let mut nodes = Vec::new();
-    let mut ants = vec![];
     // dst_pow < one
     let dst_pow: f64 = 0.5;
     // pheromone_pow > 0
     let pheromone_pow: f64 = 2.0;
     let evaporation_rate: f64 = 0.3;
     let pheromone_str: f64 = 1.2;
+    let num_iterations = 20;
 
     let mut graph = Graph::<i32, i32, Undirected>::new_undirected();
 
@@ -83,7 +84,36 @@ fn main() {
     edges.insert(graph.add_edge(nodes[3], nodes[4], 18).index(), 1.0);
     edges.insert(graph.add_edge(nodes[3], nodes[5], 5).index(), 1.0);
     edges.insert(graph.add_edge(nodes[4], nodes[5], 9).index(), 1.0);
-
+    edges.insert(graph.add_edge(nodes[6], nodes[0], 9).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[1], 14).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[2], 30).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[3], 12).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[4], 5).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[6], nodes[5], 1).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[0], 19).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[1], 18).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[2], 1).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[3], 12).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[4], 23).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[5], 28).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[7], nodes[6], 18).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[0], 6).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[1], 4).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[2], 3).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[3], 13).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[4], 11).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[5], 23).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[6], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[8], nodes[7], 23).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[0], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[1], 16).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[2], 25).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[3], 28).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[4], 24).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[5], 5).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[6], 21).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[7], 15).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[9], nodes[8], 7).index(), 1.0);
 
     let graph = Arc::new(Mutex::new(graph));
     let edges = Arc::new(Mutex::new(edges));
@@ -91,28 +121,36 @@ fn main() {
 
 
     let ant_paths: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::with_capacity((num_nodes * num_ants) as usize)));
-
-    for _ in 0..num_ants {
-        let graph = Arc::clone(&graph);
-        let edges = Arc::clone(&edges);
-        let ant_paths = Arc::clone(&ant_paths);
-        let ant = thread::spawn(move || {
-            let mut ant_path = crawl_path(&graph, &edges, dst_pow, pheromone_pow);
-            ant_paths.lock().unwrap().append(&mut ant_path);
-        });
-        ants.push(ant);
+    for _ in 0..num_iterations {
+        let mut ants = vec![];
+        ant_paths.lock().unwrap().clear();
+        for _ in 0..num_ants {
+            let graph = Arc::clone(&graph);
+            let edges = Arc::clone(&edges);
+            let ant_paths = Arc::clone(&ant_paths);
+            let ant = thread::spawn(move || {
+                let mut ant_path = crawl_path(&graph, &edges, dst_pow, pheromone_pow);
+                ant_paths.lock().unwrap().append(&mut ant_path);
+            });
+            ants.push(ant);
+        }
+        for ant in ants {
+            ant.join().unwrap();
+        }
+        // Prints the path the ant took
+        println!("{:?}", ant_paths.lock().unwrap());
+        update_pheromones(&graph,
+                          &edges,
+                          &ant_paths,
+                          evaporation_rate,
+                          pheromone_str,
+                          (num_nodes - 1) as usize,
+                          num_nodes, num_ants);
     }
-    for ant in ants {
-        ant.join().unwrap();
+    for (_, value) in edges.lock().unwrap().iter_mut() {
+        // This prints the pheromone strength on each edge
+        println!("{}", value);
     }
-    println!("{:?}", ant_paths.lock().unwrap());
-    update_pheromones(&graph,
-                      &edges,
-                      &ant_paths,
-                      evaporation_rate,
-                      pheromone_str,
-                      (num_nodes - 1) as usize,
-                      num_nodes, num_ants);
 }
 
 fn crawl_path(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
@@ -229,7 +267,7 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
      */
     let nodes: Vec<_> = graph.lock().unwrap().node_indices().collect();
     let mut ant_tour_cost = Vec::with_capacity(num_ants as usize);
-    let mut all_paths_idx = 0;
+    let all_paths_idx = 0;
     let mut total_path_cost = 0;
     let mut each_ant_idx = 0;
 
@@ -275,5 +313,14 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
             let new_edge_pheromone_lvl = curr_edge_weight + (pheromone_str / ant_tour_cost[each_ant_idx as usize] as f64);
             edges.lock().unwrap().insert(curr_edge, new_edge_pheromone_lvl);
         }
+        each_ant_idx += 1;
+    }
+}
+
+// Needs to take in a reference to the graph object, the number of nodes, and reference to the nodes vector
+fn connect_graph(graph: &Graph<i32, i32, Undirected>, num_nodes: i32, nodes_vec: &Vec<NodeIndex>, edges: &HashMap<usize, f64>) {
+    let number_edges = (num_nodes * (num_nodes - 1)) / 2;
+    for i in 0..number_edges {
+
     }
 }
