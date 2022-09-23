@@ -51,7 +51,7 @@ fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_ants = &args[1].parse::<i32>().unwrap();
     let num_ants = 6;
-    let num_nodes: i32 = 10;
+    let num_nodes: i32 = 12;
     let mut nodes = Vec::new();
     // dst_pow < one
     let dst_pow: f64 = 0.5;
@@ -114,6 +114,27 @@ fn main() {
     edges.insert(graph.add_edge(nodes[9], nodes[6], 21).index(), 1.0);
     edges.insert(graph.add_edge(nodes[9], nodes[7], 15).index(), 1.0);
     edges.insert(graph.add_edge(nodes[9], nodes[8], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[0], 4).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[1], 27).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[2], 7).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[3], 20).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[4], 19).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[5], 10).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[6], 21).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[7], 28).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[8], 18).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[10], nodes[9], 28).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[0], 13).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[1], 20).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[2], 22).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[3], 17).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[4], 8).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[5], 15).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[6], 23).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[7], 29).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[8], 15).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[9], 10).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[10], 4).index(), 1.0);
 
     let graph = Arc::new(Mutex::new(graph));
     let edges = Arc::new(Mutex::new(edges));
@@ -321,6 +342,16 @@ fn update_pheromones(graph: &Arc<Mutex<Graph<i32, i32, Undirected>>>,
 fn connect_graph(graph: &Graph<i32, i32, Undirected>, num_nodes: i32, nodes_vec: &Vec<NodeIndex>, edges: &HashMap<usize, f64>) {
     let number_edges = (num_nodes * (num_nodes - 1)) / 2;
     for i in 0..number_edges {
-
+        let node1 = nodes_vec[1];
+        let node2 = nodes_vec[2];
+        //graph.contains_edge(nodes_vec[1], node2);
+        // start from edge connecting node 0 & node 1
+        // If edge does not exist, create it
+        // increment the second node by 1 -> check if edge between 0 & 2 exists
+        // continue this until edge between 0 and n, where n is the last node
+        // increment the first node, so now we are on nodes 0 & 1
+        // check if an edge is already connecting them -> undirected so edge(0,1) == edge(1,0)
+        // continue until edge(n, n-1)
+        // then we are done
     }
 }
