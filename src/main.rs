@@ -68,8 +68,23 @@ fn main() {
     }
 
     let mut edges: HashMap<usize, f64> = HashMap::with_capacity(graph.edge_count());
+    /*
+    0,1. 0,2. 0,3. 0,4.
+    1,2. 1,3. 1,4.
+    2,3. 2,4.
+    3,4.
+     */
+    let mut first_second_node = 1;
+    let mut edge_weight = rand::thread_rng();
+    for first_edge in 0..num_nodes {
+        for second_edge in first_second_node..num_nodes {
+            edges.insert(graph.add_edge(nodes[first_edge as usize], nodes[second_edge as usize], edge_weight.gen_range(1..30)).index(), 1.0);
+            println!("{}, {}", first_edge, second_edge);
+        }
+        first_second_node += 1;
+    }
 
-    edges.insert(graph.add_edge(nodes[0], nodes[1], 17).index(), 1.0);
+/*    edges.insert(graph.add_edge(nodes[0], nodes[1], 17).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[2], 7).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[3], 24).index(), 1.0);
     edges.insert(graph.add_edge(nodes[0], nodes[4], 3).index(), 1.0);
@@ -134,7 +149,7 @@ fn main() {
     edges.insert(graph.add_edge(nodes[11], nodes[7], 29).index(), 1.0);
     edges.insert(graph.add_edge(nodes[11], nodes[8], 15).index(), 1.0);
     edges.insert(graph.add_edge(nodes[11], nodes[9], 10).index(), 1.0);
-    edges.insert(graph.add_edge(nodes[11], nodes[10], 4).index(), 1.0);
+    edges.insert(graph.add_edge(nodes[11], nodes[10], 4).index(), 1.0);*/
 
     let graph = Arc::new(Mutex::new(graph));
     let edges = Arc::new(Mutex::new(edges));
